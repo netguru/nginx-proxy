@@ -88,6 +88,12 @@ proxy_set_header X-Forwarded-Port $proxy_x_forwarded_port;
 proxy_set_header Proxy "";
 {{ end }}
 
+{{/* Get the CLEAR_SERVER_HEADER to restrict server response header */}}
+{{ $clear_server_header := or ($.Env.CLEAR_SERVER_HEADER) "" }}
+
+{{/* Get the SECURE_COOKIE to add secure cookie header */}}
+{{ $secure_cookie := or ($.Env.SECURE_COOKIE) "" }}
+
 {{ $enable_ipv6 := eq (or ($.Env.ENABLE_IPV6) "") "true" }}
 server {
 	server_name _; # This is just an invalid value which will never trigger on a real hostname.
@@ -96,6 +102,12 @@ server {
 	listen [::]:80;
 	{{ end }}
 	access_log /var/log/nginx/access.log vhost;
+	{{ if $clear_server_header }}
+	more_clear_headers Server;
+	{{ end }}
+	{{ if $secure_cookie }}
+	set_cookie_flag * secure;
+	{{ end }}
 	return 503;
 }
 
@@ -107,6 +119,12 @@ server {
 	listen [::]:443 ssl http2;
 	{{ end }}
 	access_log /var/log/nginx/access.log vhost;
+	{{ if $clear_server_header }}
+	more_clear_headers Server;
+	{{ end }}
+	{{ if $secure_cookie }}
+	set_cookie_flag * secure;
+	{{ end }}
 	return 503;
 
 	ssl_session_tickets off;
@@ -169,11 +187,6 @@ upstream {{ $upstream_name }} {
 {{/* Get the VIRTUAL_ROOT By containers w/ use fastcgi root */}}
 {{ $vhost_root := or (first (groupByKeys $containers "Env.VIRTUAL_ROOT")) "/var/www/public" }}
 
-
-{{/* Get the CLEAR_SERVER_HEADER to restrict server response header */}}
-{{ $clear_server_header := eq (or ($.Env.CLEAR_SERVER_HEADER) "") "true" }}
-
-
 {{/* Get the first cert name defined by containers w/ the same vhost */}}
 {{ $certName := (first (groupByKeys $containers "Env.CERT_NAME")) }}
 
@@ -202,6 +215,9 @@ server {
 	{{ if $clear_server_header }}
 	more_clear_headers Server;
 	{{ end }}
+	{{ if $secure_cookie }}
+	set_cookie_flag * secure;
+	{{ end }}
 	return 301 https://$host$request_uri;
 }
 {{ end }}
@@ -215,6 +231,9 @@ server {
 	access_log /var/log/nginx/access.log vhost;
 	{{ if $clear_server_header }}
 	more_clear_headers Server;
+	{{ end }}
+	{{ if $secure_cookie }}
+	set_cookie_flag * secure;
 	{{ end }}
 
 	{{ if eq $network_tag "internal" }}
@@ -317,6 +336,9 @@ server {
 	{{ if $clear_server_header }}
 	more_clear_headers Server;
 	{{ end }}
+	{{ if $secure_cookie }}
+	set_cookie_flag * secure;
+	{{ end }}
 
 	{{ if eq $network_tag "internal" }}
 	# Only allow traffic from internal clients
@@ -362,6 +384,9 @@ server {
 	access_log /var/log/nginx/access.log vhost;
 	{{ if $clear_server_header }}
 	more_clear_headers Server;
+	{{ end }}
+	{{ if $secure_cookie }}
+	set_cookie_flag * secure;
 	{{ end }}
 	return 500;
 
