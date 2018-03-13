@@ -69,12 +69,16 @@ access_log off;
 resolver {{ $.Env.RESOLVERS }};
 {{ end }}
 
+{{ $cookie_secure := eq (or ($.Env.COOKIE_SECURE) "") "true" }}
 {{ if (exists "/etc/nginx/proxy.conf") }}
 include /etc/nginx/proxy.conf;
 {{ else }}
 # HTTP 1.1 support
 proxy_http_version 1.1;
 proxy_buffering off;
+{{ $cookie_secure }}
+proxy_cookie_path / "/; Secure";
+{{ end }}
 proxy_set_header Host $http_host;
 proxy_set_header Upgrade $http_upgrade;
 proxy_set_header Connection $proxy_connection;
@@ -88,13 +92,8 @@ proxy_set_header X-Forwarded-Port $proxy_x_forwarded_port;
 proxy_set_header Proxy "";
 {{ end }}
 
-{{/* Get the CLEAR_SERVER_HEADER to restrict server response header */}}
-{{ $clear_server_header := or ($.Env.CLEAR_SERVER_HEADER) "" }}
-
-{{/* Get the SECURE_COOKIE to add secure cookie header */}}
-{{ $secure_cookie := or ($.Env.SECURE_COOKIE) "" }}
-
 {{ $enable_ipv6 := eq (or ($.Env.ENABLE_IPV6) "") "true" }}
+{{ $more_clear_headers := eq (or ($.Env.MORE_CLEAR_HEADERS) "") "true" }}
 server {
 	server_name _; # This is just an invalid value which will never trigger on a real hostname.
 	listen 80;
@@ -102,12 +101,9 @@ server {
 	listen [::]:80;
 	{{ end }}
 	access_log /var/log/nginx/access.log vhost;
-	{{ if $clear_server_header }}
+        {{ if $more_clear_headers }}
 	more_clear_headers Server;
-	{{ end }}
-	{{ if $secure_cookie }}
-	set_cookie_flag * secure;
-	{{ end }}
+        {{ end }}
 	return 503;
 }
 
@@ -119,12 +115,9 @@ server {
 	listen [::]:443 ssl http2;
 	{{ end }}
 	access_log /var/log/nginx/access.log vhost;
-	{{ if $clear_server_header }}
+        {{ if $more_clear_headers }}
 	more_clear_headers Server;
-	{{ end }}
-	{{ if $secure_cookie }}
-	set_cookie_flag * secure;
-	{{ end }}
+        {{ end }}
 	return 503;
 
 	ssl_session_tickets off;
@@ -212,12 +205,9 @@ server {
 	listen [::]:80 {{ $default_server }};
 	{{ end }}
 	access_log /var/log/nginx/access.log vhost;
-	{{ if $clear_server_header }}
+        {{ if $more_clear_headers }}
 	more_clear_headers Server;
-	{{ end }}
-	{{ if $secure_cookie }}
-	set_cookie_flag * secure;
-	{{ end }}
+        {{ end }}
 	return 301 https://$host$request_uri;
 }
 {{ end }}
@@ -229,12 +219,9 @@ server {
 	listen [::]:443 ssl http2 {{ $default_server }};
 	{{ end }}
 	access_log /var/log/nginx/access.log vhost;
-	{{ if $clear_server_header }}
+        {{ if $more_clear_headers }}
 	more_clear_headers Server;
-	{{ end }}
-	{{ if $secure_cookie }}
-	set_cookie_flag * secure;
-	{{ end }}
+        {{ end }}
 
 	{{ if eq $network_tag "internal" }}
 	# Only allow traffic from internal clients
@@ -333,12 +320,9 @@ server {
 	listen [::]:80 {{ $default_server }};
 	{{ end }}
 	access_log /var/log/nginx/access.log vhost;
-	{{ if $clear_server_header }}
+        {{ if $more_clear_headers }}
 	more_clear_headers Server;
-	{{ end }}
-	{{ if $secure_cookie }}
-	set_cookie_flag * secure;
-	{{ end }}
+        {{ end }}
 
 	{{ if eq $network_tag "internal" }}
 	# Only allow traffic from internal clients
@@ -382,12 +366,9 @@ server {
 	listen [::]:443 ssl http2 {{ $default_server }};
 	{{ end }}
 	access_log /var/log/nginx/access.log vhost;
-	{{ if $clear_server_header }}
+        {{ if $more_clear_headers }}
 	more_clear_headers Server;
-	{{ end }}
-	{{ if $secure_cookie }}
-	set_cookie_flag * secure;
-	{{ end }}
+        {{ end }}
 	return 500;
 
 	ssl_certificate /etc/nginx/certs/default.crt;
